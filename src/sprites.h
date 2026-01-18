@@ -1,0 +1,29 @@
+#pragma once
+#include <pgmspace.h>
+#include "animator.h"
+
+static const uint16_t SLASHER_A[] PROGMEM = {
+  0x0000,0xFFFF,0xFFFF,0x0000,
+  0xFFFF,0x0000,0x0000,0xFFFF,
+  0xFFFF,0x0000,0x0000,0xFFFF,
+  0x0000,0xFFFF,0xFFFF,0x0000
+};
+
+static const uint16_t SLASHER_B[] PROGMEM = {
+  0x0000,0xFFFF,0xFFFF,0x0000,
+  0xFFFF,0xFFFF,0xFFFF,0xFFFF,
+  0xFFFF,0xFFFF,0xFFFF,0xFFFF,
+  0x0000,0xFFFF,0xFFFF,0x0000
+};
+
+static const Sprite SPR_A = { SLASHER_A, 4, 4 };
+static const Sprite SPR_B = { SLASHER_B, 4, 4 };
+
+static const Sprite* IDLE_FRAMES[] = { &SPR_A, &SPR_B };
+
+static const Animation IDLE_ANIM = {
+  IDLE_FRAMES,
+  2,
+  500,
+  true
+};
