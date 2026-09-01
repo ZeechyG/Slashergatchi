@@ -25,3 +25,7 @@ const Sprite* Animator::frame() const {
   if (!anim) return nullptr;
   return anim->frames[index];
 }
+
+bool Animator::finished() const {
+  return anim && !anim->loop && index >= anim->count - 1;
+}

@@ -13,6 +13,7 @@ void petInit() {
   pet.mood = 80;
   pet.energy = 80;
   pet.stage = 0;
+  pet.killer = 0;
   pet.xp = 0;
   pet.lastTick = millis();
 }

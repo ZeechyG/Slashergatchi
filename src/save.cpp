@@ -20,6 +20,7 @@ void loadGame() {
   pet.mood = prefs.getUChar("mood", 80);
   pet.energy = prefs.getUChar("energy", 80);
   pet.stage = prefs.getUChar("stage", 0);
+  pet.killer = prefs.getUChar("killer", 0);
   pet.xp = prefs.getUInt("xp", 0);
   prefs.end();
 
@@ -33,6 +34,7 @@ void saveGame() {
   prefs.putUChar("mood", pet.mood);
   prefs.putUChar("energy", pet.energy);
   prefs.putUChar("stage", pet.stage);
+  prefs.putUChar("killer", pet.killer);
   prefs.putUInt("xp", pet.xp);
   prefs.end();
 }

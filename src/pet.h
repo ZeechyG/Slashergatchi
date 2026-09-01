@@ -6,6 +6,7 @@ struct PetStats {
   uint8_t mood;
   uint8_t energy;
   uint8_t stage;
+  uint8_t killer;
   uint32_t xp;
   unsigned long lastTick;
 };

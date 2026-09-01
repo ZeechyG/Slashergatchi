@@ -2,22 +2,27 @@
 #include <pgmspace.h>
 #include "animator.h"
 
-static const uint16_t SLASHER_A[] PROGMEM = {
-  0x0000,0xFFFF,0xFFFF,0x0000,
-  0xFFFF,0x0000,0x0000,0xFFFF,
-  0xFFFF,0x0000,0x0000,0xFFFF,
-  0x0000,0xFFFF,0xFFFF,0x0000
+// Placeholder art: a 4x4 1bpp blob, kept only so the firmware builds and runs
+// before real sheets are converted. Replace the EVOLUTION_ANIMS entries below
+// with generated headers from tools/sheet2sprites.py.
+static const uint16_t PLACEHOLDER_PALETTE[] PROGMEM = { 0x0000, 0xFFFF };
+
+static const uint8_t PLACEHOLDER_A_DATA[] PROGMEM = {
+  0x60,
+  0x90,
+  0x90,
+  0x60
 };
 
-static const uint16_t SLASHER_B[] PROGMEM = {
-  0x0000,0xFFFF,0xFFFF,0x0000,
-  0xFFFF,0xFFFF,0xFFFF,0xFFFF,
-  0xFFFF,0xFFFF,0xFFFF,0xFFFF,
-  0x0000,0xFFFF,0xFFFF,0x0000
+static const uint8_t PLACEHOLDER_B_DATA[] PROGMEM = {
+  0x60,
+  0xF0,
+  0xF0,
+  0x60
 };
 
-static const Sprite SPR_A = { SLASHER_A, 4, 4 };
-static const Sprite SPR_B = { SLASHER_B, 4, 4 };
+static const Sprite SPR_A = { PLACEHOLDER_A_DATA, PLACEHOLDER_PALETTE, 4, 4, 1 };
+static const Sprite SPR_B = { PLACEHOLDER_B_DATA, PLACEHOLDER_PALETTE, 4, 4, 1 };
 
 static const Sprite* IDLE_FRAMES[] = { &SPR_A, &SPR_B };
 
