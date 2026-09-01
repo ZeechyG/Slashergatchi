@@ -1,5 +1,7 @@
 #include "animator.h"
 
+Animator animator;
+
 void Animator::play(const Animation* a) {
   if (anim != a) {
     anim = a;

@@ -27,3 +27,12 @@ static const Animation IDLE_ANIM = {
   500,
   true
 };
+
+// One slot per evolution stage (see EVOLUTION_STAGE_COUNT in pet.h).
+// All stages share the placeholder animation until real per-stage art lands.
+static const Animation* const EVOLUTION_ANIMS[] = {
+  &IDLE_ANIM,
+  &IDLE_ANIM,
+  &IDLE_ANIM,
+  &IDLE_ANIM
+};
