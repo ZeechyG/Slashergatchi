@@ -1,27 +1,38 @@
 #include "npc_ai.h"
 
-void npcInit(NPC& n, int16_t x) {
-  n.x = x;
-  n.state = NPCState::IDLE;
-  n.lastTick = millis();
+static const int16_t FLEE_TRIGGER_DIST = 30;
+static const int16_t FLEE_SAFE_DIST = 55;
+static const uint32_t COOLDOWN_MS = 800;
+
+void preyInit(Prey& p, int16_t x) {
+  p.x = x;
+  p.state = PreyState::IDLE;
+  p.lastTick = millis();
+  p.cooldownUntil = 0;
 }
 
-void npcUpdate(NPC& n, int16_t px) {
-  if (millis() - n.lastTick < 100) return;
-  n.lastTick = millis();
+void preyUpdate(Prey& p, int16_t hunterX, int16_t minX, int16_t maxX) {
+  uint32_t now = millis();
+  if (now - p.lastTick < 40) return;
+  p.lastTick = now;
 
-  int dx = px - n.x;
+  int dx = hunterX - p.x;
 
-  switch (n.state) {
-    case NPCState::IDLE:
-      if (abs(dx) < 30) n.state = NPCState::CHASE;
+  switch (p.state) {
+    case PreyState::IDLE:
+      if (abs(dx) < FLEE_TRIGGER_DIST) p.state = PreyState::FLEE;
       break;
-    case NPCState::CHASE:
-      n.x += (dx > 0 ? 1 : -1);
-      if (abs(dx) > 60) n.state = NPCState::SEARCH;
+    case PreyState::FLEE:
+      p.x += (dx > 0 ? -2 : 2);
+      if (abs(dx) > FLEE_SAFE_DIST) {
+        p.state = PreyState::COOLDOWN;
+        p.cooldownUntil = now + COOLDOWN_MS;
+      }
       break;
-    case NPCState::SEARCH:
-      n.state = NPCState::IDLE;
+    case PreyState::COOLDOWN:
+      if (now >= p.cooldownUntil) p.state = PreyState::IDLE;
       break;
   }
+
+  p.x = constrain(p.x, minX, maxX);
 }

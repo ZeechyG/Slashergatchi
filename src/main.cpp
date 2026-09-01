@@ -2,15 +2,10 @@
 #include <WiFi.h>
 #include <esp_ota_ops.h>
 
-#include "animator.h"
-#include "sprites.h"
-#include "npc_ai.h"
+#include "pet.h"
+#include "save.h"
+#include "sound.h"
 #include "game.h"
-
-Animator animator;
-NPC npc;
-
-int16_t playerX = 20;
 
 void setup() {
   M5.begin();
@@ -21,24 +16,13 @@ void setup() {
   M5.Lcd.setRotation(1);
   M5.Lcd.fillScreen(BLACK);
 
-  animator.play(&IDLE_ANIM);
-  npcInit(npc, 100);
+  soundInit();
+  loadGame();
   gameInit();
 }
 
 void loop() {
   M5.update();
-  animator.update();
   gameUpdate();
-
-  if (M5.BtnA.isPressed()) playerX++;
-
-  npcUpdate(npc, playerX);
-
-  M5.Lcd.fillScreen(BLACK);
-  const Sprite* s = animator.frame();
-  if (s) M5.Lcd.pushImage(playerX, 60, s->w, s->h, s->data);
-  M5.Lcd.fillCircle(npc.x, 60, 3, RED);
-
   delay(16);
 }

@@ -24,3 +24,5 @@ private:
   uint8_t index = 0;
   unsigned long last = 0;
 };
+
+extern Animator animator;

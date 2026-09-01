@@ -1,17 +1,18 @@
 #pragma once
 #include <Arduino.h>
 
-enum class NPCState : uint8_t {
+enum class PreyState : uint8_t {
   IDLE,
-  CHASE,
-  SEARCH
+  FLEE,
+  COOLDOWN
 };
 
-struct NPC {
+struct Prey {
   int16_t x;
-  NPCState state;
+  PreyState state;
   uint32_t lastTick;
+  uint32_t cooldownUntil;
 };
 
-void npcInit(NPC& n, int16_t x);
-void npcUpdate(NPC& n, int16_t playerX);
+void preyInit(Prey& p, int16_t x);
+void preyUpdate(Prey& p, int16_t hunterX, int16_t minX, int16_t maxX);
