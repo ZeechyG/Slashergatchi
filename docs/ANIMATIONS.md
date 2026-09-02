@@ -46,6 +46,14 @@ You do not need all of it to have a good-looking game. In priority order:
 4. **`STALK`, `HAPPY`, `SCOLD`, `MISS`.**
 5. **`EVOLVE`.** Draw once, share across killers.
 
+## Boot splash
+
+`BOOT_SKULL` is an 11-frame skull dissolve played once on power-up, centred at
+64x64, skippable with either button. It is spliced from a 3-row sheet: rows 1
+and 2 turned out to be two separate takes of the same dissolve rather than one
+continuous run, so the sequence uses row 1 (skull shredding apart) followed by
+row 3 (the remaining cloud fading out).
+
 ## Non-killer art still needed
 
 | Sprite | Frames | Notes |
@@ -75,10 +83,11 @@ currently completely unused.
 
 ## Producing a sheet
 
-Lay frames out in a single horizontal row. The converter finds frames by
-scanning for blank columns, so a clear gutter between figures matters more than
-exact spacing — and if a raised weapon bridges a gutter, it splits the span at
-the thinnest column instead.
+Frames can be a single row or a grid; pass `--rows N` for a grid and a ragged
+last row is fine. The converter locates frames by scanning for blank gutters in
+both axes rather than slicing evenly, so a clear gutter between figures matters
+more than exact spacing. If a raised weapon bridges a gutter it splits the span
+at its thinnest column, and hairline spans from background speckle are dropped.
 
 ```
 python3 tools/sheet2sprites.py assets/sheets/jason_strike.png \
@@ -97,6 +106,15 @@ Useful flags:
 - `--normalize 2` stretches tones to full range. Essential for dark-on-dark art.
 - `--smooth` area-averages when downscaling; keeps dithered shading readable.
   Leave it off for art already drawn at low resolution.
-- `--align sheet` preserves where each figure sits in its cell. Use it when the
-  motion is deliberate; the default re-centres every frame and would cancel it out.
+- `--align sheet` preserves where each figure sits in its cell, and its scale.
+  Essential for an effect that shrinks — the default re-centres and re-fills
+  every frame, which would blow a dissolving cloud back up to full size.
+- `--anchor center` stops frames sitting on the floor. Use it for effects;
+  leave the default for characters so a walk cycle keeps its feet planted.
+- `--pick 0-5,12-16` selects and orders frames, for sheets that hold more than
+  one take.
+- `--no-fill` skips interior hole filling. A dissolve is made of holes.
 - `--art-levels` derives palette greys from the art instead of an even ramp.
+
+Frames are indexed in reading order, left to right then top to bottom, and the
+converter prints the boxes it found so `--pick` indices are easy to read off.

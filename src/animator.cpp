@@ -7,17 +7,23 @@ void Animator::play(const Animation* a) {
     anim = a;
     index = 0;
     last = millis();
+    done = false;
   }
 }
 
 void Animator::update() {
   if (!anim) return;
-  if (millis() - last >= anim->speedMs) {
-    last = millis();
+  if (millis() - last < anim->speedMs) return;
+
+  last = millis();
+  if (index + 1 < anim->count) {
     index++;
-    if (index >= anim->count) {
-      index = anim->loop ? 0 : anim->count - 1;
-    }
+  } else if (anim->loop) {
+    index = 0;
+  } else {
+    // The final frame has now been shown for its full duration, so a one-shot
+    // animation is only finished here -- not the moment that frame appears.
+    done = true;
   }
 }
 
@@ -27,5 +33,5 @@ const Sprite* Animator::frame() const {
 }
 
 bool Animator::finished() const {
-  return anim && !anim->loop && index >= anim->count - 1;
+  return done;
 }

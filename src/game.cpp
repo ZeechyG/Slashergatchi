@@ -5,6 +5,8 @@
 #include "sound.h"
 #include "care.h"
 #include "hunt.h"
+#include "killers.h"
+#include "sprite_draw.h"
 
 GameState gameState = GameState::MENU;
 
@@ -37,8 +39,22 @@ static void enterState(GameState s) {
 }
 
 void gameInit() {
-  gameState = GameState::MENU;
+  gameState = GameState::BOOT;
   menuIndex = 0;
+  animator.play(bootAnimation());
+}
+
+// The splash is skippable: nobody wants to sit through it on every power-up.
+static void updateBoot() {
+  animator.update();
+
+  M5.Lcd.fillScreen(BLACK);
+  const Sprite* s = animator.frame();
+  if (s) drawSprite((240 - s->w) / 2, (135 - s->h) / 2, s);
+
+  if (animator.finished() || M5.BtnA.wasPressed() || M5.BtnB.wasPressed()) {
+    gameState = GameState::MENU;
+  }
 }
 
 static void updateMenu() {
@@ -63,6 +79,9 @@ void gameUpdate() {
   if (pet.stage != stageBefore) soundEvolve();
 
   switch (gameState) {
+    case GameState::BOOT:
+      updateBoot();
+      break;
     case GameState::MENU:
       updateMenu();
       break;

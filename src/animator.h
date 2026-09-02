@@ -30,6 +30,7 @@ private:
   const Animation* anim = nullptr;
   uint8_t index = 0;
   unsigned long last = 0;
+  bool done = false;
 };
 
 extern Animator animator;

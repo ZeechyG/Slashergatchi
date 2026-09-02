@@ -7,6 +7,7 @@
 #include "generated/chucky_idle.h"
 #include "generated/jason_idle.h"
 #include "generated/baby_idle.h"
+#include "generated/boot_skull.h"
 
 #define ANIMS(idle) { { idle, nullptr, nullptr, nullptr, nullptr, \
                         nullptr, nullptr, nullptr, nullptr, nullptr } }
@@ -38,6 +39,10 @@ const uint8_t KILLER_COUNT = sizeof(KILLERS) / sizeof(KILLERS[0]);
 
 const Killer& killerAt(uint8_t index) {
   return KILLERS[index < KILLER_COUNT ? index : 0];
+}
+
+const Animation* bootAnimation() {
+  return &BOOT_SKULL_ANIM;
 }
 
 const Animation* killerAnim(uint8_t killer, uint8_t stage, AnimId id) {

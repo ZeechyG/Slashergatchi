@@ -94,71 +94,117 @@ def build_mask(im, bg_tolerance, alpha_threshold, fill):
     return fill_holes(mask) if fill else mask
 
 
-def find_frames(mask, expected, min_gap):
-    """Split a sheet into frame boxes using blank vertical gutters."""
-    width, height = mask.size
-    pixels = mask.load()
-
-    ink = []
-    for x in range(width):
-        count = 0
-        for y in range(height):
-            if pixels[x, y]:
-                count += 1
-        ink.append(count)
-
-    spans, start = [], None
-    gap = 0
-    for x in range(width):
-        if ink[x] > 0:
+def spans_from_profile(profile, min_gap, limit):
+    """Group a run of non-empty buckets into spans separated by blank gaps."""
+    spans, start, gap = [], None, 0
+    for i, value in enumerate(profile):
+        if value > 0:
             if start is None:
-                start = x
+                start = i
             gap = 0
         elif start is not None:
             gap += 1
             if gap >= min_gap:
-                spans.append((start, x - gap + 1))
+                spans.append((start, i - gap + 1))
                 start = None
     if start is not None:
-        spans.append((start, width))
+        spans.append((start, limit))
+    return spans
 
-    if expected and len(spans) > expected:
-        spans.sort(key=lambda s: s[1] - s[0], reverse=True)
-        spans = sorted(spans[:expected])
+
+def column_profile(pixels, top, bottom, width):
+    return [sum(1 for y in range(top, bottom) if pixels[x, y]) for x in range(width)]
+
+
+def find_frames(mask, expected, min_gap, expect_rows):
+    """Locate frame boxes by scanning for blank gutters in both axes.
+
+    Sheets are rarely on an exact grid -- figures drift within their cell and
+    the last row is often short -- so detecting the art beats slicing evenly.
+    """
+    width, height = mask.size
+    pixels = mask.load()
+
+    if expect_rows == 1:
+        bands = [(0, height)]
+    else:
+        row_ink = [sum(1 for x in range(width) if pixels[x, y]) for y in range(height)]
+        bands = spans_from_profile(row_ink, max(min_gap * 4, 16), height)
+        if expect_rows and len(bands) != expect_rows:
+            bands = [(int(round(r * height / expect_rows)),
+                      int(round((r + 1) * height / expect_rows))) for r in range(expect_rows)]
+        if not bands:
+            return None
+
+    boxes, profiles = [], {}
+    for top, bottom in bands:
+        ink = column_profile(pixels, top, bottom, width)
+        profiles[(top, bottom)] = ink
+        for left, right in spans_from_profile(ink, min_gap, width):
+            boxes.append((left, top, right, bottom))
+
+    # Speckle keyed out of a noisy background shows up as hairline spans that
+    # would otherwise be counted as frames.
+    if boxes:
+        widths = sorted(b[2] - b[0] for b in boxes)
+        median = widths[len(widths) // 2]
+        boxes = [b for b in boxes if b[2] - b[0] >= median * 0.25]
+
+    if expected and len(boxes) > expected:
+        boxes.sort(key=lambda b: (b[2] - b[0]) * (b[3] - b[1]), reverse=True)
+        boxes = boxes[:expected]
 
     # A prop that crosses a gutter -- a raised knife, a swung weapon -- welds two
-    # frames into one span. Split the widest span at its thinnest column until
-    # the count comes out right.
-    while expected and len(spans) < expected:
-        widest = max(range(len(spans)), key=lambda i: spans[i][1] - spans[i][0])
-        left, right = spans[widest]
+    # frames into one box. Split the widest box at its thinnest column until the
+    # count comes out right.
+    while expected and len(boxes) < expected:
+        widest = max(range(len(boxes)), key=lambda i: boxes[i][2] - boxes[i][0])
+        left, top, right, bottom = boxes[widest]
         if right - left < 4 * min_gap:
             return None
+        ink = profiles[(top, bottom)]
         margin = (right - left) // 4
         cut = min(range(left + margin, right - margin), key=lambda x: ink[x])
-        spans[widest:widest + 1] = [(left, cut), (cut, right)]
-        spans.sort()
+        boxes[widest:widest + 1] = [(left, top, cut, bottom), (cut, top, right, bottom)]
 
-    return spans if not expected or len(spans) == expected else None
-
-
-def grid_frames(width, count):
-    step = width / count
-    return [(int(round(i * step)), int(round((i + 1) * step))) for i in range(count)]
+    boxes.sort(key=lambda b: (b[1], b[0]))
+    if expected and len(boxes) != expected:
+        return None
+    return boxes
 
 
-def extract_frame(im, mask, box, size, align, resample):
+def grid_frames(width, height, rows, cols, count):
+    """Even rows x cols split, read left to right then top to bottom.
+
+    A ragged last row is fine: only the first `count` cells are kept.
+    """
+    boxes = []
+    for row in range(rows):
+        top = int(round(row * height / rows))
+        bottom = int(round((row + 1) * height / rows))
+        for col in range(cols):
+            if count and len(boxes) >= count:
+                return boxes
+            left = int(round(col * width / cols))
+            right = int(round((col + 1) * width / cols))
+            boxes.append((left, top, right, bottom))
+    return boxes
+
+
+def extract_frame(im, mask, box, size, align, anchor, resample):
     """Crop one frame, normalise its position, and scale it onto a square canvas."""
-    left, right = box
-    strip_mask = mask.crop((left, 0, right, mask.height))
-    bbox = strip_mask.getbbox()
+    left, top, right, bottom = box
+    cell_mask = mask.crop(box)
+    bbox = cell_mask.getbbox()
     if bbox is None:
         return Image.new("LA", (size, size), (0, 0))
 
     if align == "sheet":
-        crop = (left, 0, right, im.height)
+        # Keep the cell whole so motion and scale changes across frames survive:
+        # a dissolve that shrinks must not be re-enlarged frame by frame.
+        crop = box
     else:
-        crop = (left + bbox[0], bbox[1], left + bbox[2], bbox[3])
+        crop = (left + bbox[0], top + bbox[1], left + bbox[2], top + bbox[3])
 
     art = im.convert("RGBA").crop(crop)
     art_mask = mask.crop(crop)
@@ -172,8 +218,8 @@ def extract_frame(im, mask, box, size, align, resample):
     grey = grey.resize((new_w, new_h), resample)
 
     canvas = Image.new("LA", (size, size), (0, 0))
-    # Centre horizontally, sit on the floor: keeps a walk cycle's feet planted.
-    canvas.paste(grey, ((size - new_w) // 2, size - new_h))
+    y = size - new_h if anchor == "floor" else (size - new_h) // 2
+    canvas.paste(grey, ((size - new_w) // 2, y))
     return canvas
 
 
@@ -313,8 +359,12 @@ def main():
     ap.add_argument("--speed", type=int, default=150, help="ms per frame")
     ap.add_argument("--once", action="store_true", help="play once instead of looping")
     ap.add_argument("--grid", action="store_true", help="force an even split, skip gap detection")
+    ap.add_argument("--rows", type=int, default=1, help="grid rows; implies --grid when above 1")
+    ap.add_argument("--cols", type=int, default=0, help="grid columns (defaults to --frames)")
     ap.add_argument("--align", choices=("bbox", "sheet"), default="bbox",
-                    help="bbox re-centres each frame; sheet preserves drawn motion")
+                    help="bbox re-centres each frame; sheet preserves drawn motion and scale")
+    ap.add_argument("--anchor", choices=("floor", "center"), default="floor",
+                    help="floor keeps a walk cycle's feet planted; center suits effects")
     ap.add_argument("--art-levels", action="store_true",
                     help="derive palette greys from the art instead of an even ramp")
     ap.add_argument("--tolerance", type=int, default=30, help="background keying tolerance")
@@ -326,6 +376,7 @@ def main():
                     help="area-average when downscaling (softer, keeps dither tone)")
     ap.add_argument("--normalize", type=float, default=0.0, metavar="PCT",
                     help="stretch tones to full range, clipping PCT%% at each end (try 2)")
+    ap.add_argument("--pick", help="frames to keep, in order, e.g. 0-5,12-16")
     ap.add_argument("--preview", help="write a scaled-up PNG preview here")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
@@ -335,16 +386,32 @@ def main():
 
     boxes = None
     if not args.grid:
-        boxes = find_frames(mask, args.frames, args.min_gap)
+        boxes = find_frames(mask, args.frames, args.min_gap, args.rows)
         if boxes is None:
             print(f"  gap detection did not find {args.frames} frames; falling back to even split")
     if boxes is None:
         if not args.frames:
-            sys.exit("--frames is required when gap detection fails or --grid is used")
-        boxes = grid_frames(im.width, args.frames)
+            sys.exit("--frames is required when gap detection fails or a grid is used")
+        cols = args.cols or (args.frames if args.rows == 1 else 0)
+        if not cols:
+            sys.exit("--cols is required for a multi-row grid")
+        boxes = grid_frames(im.width, im.height, args.rows, cols, args.frames)
+
+    if args.pick:
+        chosen = []
+        for part in args.pick.split(","):
+            if "-" in part:
+                first, last = (int(v) for v in part.split("-"))
+                chosen.extend(range(first, last + 1))
+            else:
+                chosen.append(int(part))
+        if any(i < 0 or i >= len(boxes) for i in chosen):
+            sys.exit(f"--pick refers to a frame outside 0-{len(boxes) - 1}")
+        boxes = [boxes[i] for i in chosen]
 
     resample = Image.BOX if args.smooth else Image.NEAREST
-    frames = [extract_frame(im, mask, b, args.size, args.align, resample) for b in boxes]
+    frames = [extract_frame(im, mask, b, args.size, args.align, args.anchor, resample)
+              for b in boxes]
     if args.normalize > 0:
         frames = normalise(frames, args.normalize)
     palette, indexed, greys = quantise(frames, args.bpp, args.art_levels)

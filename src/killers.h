@@ -31,3 +31,6 @@ extern const uint8_t KILLER_COUNT;
 
 const Killer& killerAt(uint8_t index);
 const Animation* killerAnim(uint8_t killer, uint8_t stage, AnimId id);
+
+// The splash dissolve played on power-up.
+const Animation* bootAnimation();
